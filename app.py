@@ -357,7 +357,7 @@ if st.session_state.stage == "upload":
             st.session_state.stage = "preview"
         st.rerun()
 
-# ---- AMBIGUITY REVIEW (inline editor instead of st.modal)
+# ---- AMBIGUITY REVIEW (bulk editor)
 elif st.session_state.stage == "ambiguity":
     df = st.session_state.df
     amb = df[df["ambiguous"]].copy()
@@ -369,83 +369,84 @@ elif st.session_state.stage == "ambiguity":
       <span style="font-size:18px;">⚠️</span>
       <div>
         <div style="font-weight:700;">{amb_cnt} ambiguous date format{'s' if amb_cnt!=1 else ''} detected</div>
-        <div style="color:#6b7280;">Please review and confirm the corrections below.</div>
+        <div style="color:#6b7280;">Edit all of them below, then click <b>Apply all corrections</b>.</div>
       </div>
     </div>""", unsafe_allow_html=True)
 
+    if amb_cnt == 0:
+        # Nothing ambiguous anymore—skip ahead
+        st.session_state.ambiguous_reviewed = True
+        st.session_state.stage = "preview"
+        st.rerun()
+
     with st.container(border=True):
-        st.markdown("**Data Corrections Required**")
-        st.caption("Review the detected issues and confirm the suggested corrections.")
+        st.markdown("**Bulk Edit Ambiguous Dates**")
+        st.caption("Tip: you can copy–paste down a date or use the calendar picker for each row.")
 
-        # Header
-        h = st.columns([2.0, 2.0, 1.2, 1.0, 2.2, 0.9])
-        h[0].markdown("**Original Date**"); h[1].markdown("**Corrected Date**")
-        h[2].markdown("**Sales**"); h[3].markdown("**Items Sold**")
-        h[4].markdown("**Issue**"); h[5].markdown("**Action**")
+        # Keep original indices so we can write back correctly
+        amb = amb.reset_index().rename(columns={"index": "_orig_idx"})
 
-        # Rows
-        for i, row in amb.iterrows():
-            c = st.columns([2.0, 2.0, 1.2, 1.0, 2.2, 0.9])
-            c[0].write(row["date_raw"])
-            c[1].write(row["date"].strftime("%d-%m-%Y") if pd.notna(row["date"]) else "-")
-            c[2].write(f"RM{float(row['sales']):,.2f}")
-            c[3].write(int(row["bilik_sold"]))
-            c[4].write("Ambiguous date (DD/MM vs MM/DD)")
-            if c[5].button("Edit", key=f"edit_{i}", width='stretch'):
-                st.session_state.edit_row = int(i); st.rerun()
+        # Prefill a 'corrected_date' column (use parsed date if present)
+        if "corrected_date" not in amb.columns:
+            amb["corrected_date"] = amb["date"]
 
-        st.markdown("---")
+        # Show only the needed columns; use a DateColumn for corrected_date
+        editor = st.data_editor(
+            amb[["_orig_idx", "date_raw", "corrected_date", "sales", "bilik_sold"]],
+            hide_index=True,
+            use_container_width=True,
+            num_rows="fixed",
+            column_config={
+                "_orig_idx": st.column_config.Column("_row_id", disabled=True, help="Internal row id"),
+                "date_raw": st.column_config.Column("original_date", disabled=True),
+                "corrected_date": st.column_config.DateColumn("corrected_date", format="DD-MM-YYYY"),
+                "sales": st.column_config.NumberColumn("sales", step=0.01, format="%.2f", min_value=0.0, disabled=True),
+                "bilik_sold": st.column_config.NumberColumn("bilik_sold", step=1, format="%d", min_value=0, disabled=True),
+            },
+            key="bulk_amb_editor",
+        )
 
-        # Quick stats and actions
-        total_records = len(df)
-        date_rng = f"{df['date'].min().strftime('%d %b %Y')} – {df['date'].max().strftime('%d %b %Y')}"
-        c1,c2,c3 = st.columns(3)
-        with c1:
-            st.markdown("**Total Records**")
-            st.markdown(f"<div style='font-size:28px;font-weight:800'>{total_records:,}</div>", unsafe_allow_html=True)
-            st.caption(f"🟢 {amb_cnt} require correction")
-        with c2:
-            st.markdown("**Date Range**")
-            st.markdown(f"<div style='font-size:28px;font-weight:800'>{date_rng}</div>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([1,1,2])
+        if c1.button("← Back to Upload", use_container_width=True):
+            reset_to_upload(); st.rerun()
+
+        apply_all = c2.button("Apply all corrections →", type="primary", use_container_width=True)
+
+        # Optional helper to quickly see still-empty rows
         with c3:
-            st.markdown("**Data Quality**")
-            st.markdown("<div style='font-size:28px;font-weight:800'>Needs review</div>", unsafe_allow_html=True)
+            still_empty = editor[editor["corrected_date"].isna()]
+            if not still_empty.empty:
+                st.warning(f"{len(still_empty)} row(s) still missing a corrected date.")
 
-        left, right = st.columns([1,2])
-        with left:
-            if st.button("← Back to Upload", width='stretch'):
-                reset_to_upload(); st.rerun()
-        with right:
-            if st.button("Confirm & Continue →", type="primary", width='stretch'):
-                st.session_state.ambiguous_reviewed = True
-                st.session_state.stage = "preview"; st.rerun()
+        if apply_all:
+            edited = editor.copy()
 
-    # INLINE EDITOR (no st.modal)
-    edit_idx = st.session_state.get("edit_row")
-    if edit_idx is not None:
-        with st.container(border=True):
-            st.subheader("Edit ambiguous date")
-            row = st.session_state.df.loc[edit_idx]
-            st.markdown(f"**Original string:** `{row['date_raw']}`")
-            current = pd.to_datetime(row["date"]).date() if pd.notna(row["date"]) else pd.Timestamp.today().date()
-            with st.form(f"edit_form_{edit_idx}", clear_on_submit=False):
-                new_date = st.date_input("Choose the correct date", value=current, format="DD-MM-YYYY", key=f"d_{edit_idx}")
-                col_a, col_b = st.columns(2)
-                save = col_a.form_submit_button("Save", type="primary")
-                cancel = col_b.form_submit_button("Cancel")
-                if save:
-                    nd = pd.Timestamp(new_date)
-                    st.session_state.df.at[edit_idx, "date"] = nd
-                    st.session_state.df.at[edit_idx, "date_raw"] = nd.strftime("%d-%m-%Y")
-                    st.session_state.df.at[edit_idx, "ambiguous"] = False
-                    st.session_state.df = st.session_state.df.sort_values("date").reset_index(drop=True)
-                    st.session_state.edit_row = None
-                    if int(st.session_state.df["ambiguous"].sum()) == 0:
-                        st.session_state.ambiguous_reviewed = True
-                        st.session_state.stage = "preview"
-                    st.rerun()
-                if cancel:
-                    st.session_state.edit_row = None; st.rerun()
+            # Validate: all corrected_date must be filled
+            if edited["corrected_date"].isna().any():
+                st.error("Some rows do not have a corrected date. Please fill them before applying.")
+                st.stop()
+
+            # Convert corrected_date to Timestamp
+            edited["corrected_date"] = pd.to_datetime(edited["corrected_date"], errors="coerce")
+            if edited["corrected_date"].isna().any():
+                st.error("Some corrected dates are invalid. Please fix them before applying.")
+                st.stop()
+
+            # Write back to the original df by original indices
+            for _, r in edited.iterrows():
+                idx = int(r["_orig_idx"])
+                nd = pd.Timestamp(r["corrected_date"])
+                st.session_state.df.at[idx, "date"] = nd
+                st.session_state.df.at[idx, "date_raw"] = nd.strftime("%d-%m-%Y")
+                st.session_state.df.at[idx, "ambiguous"] = False
+
+            # Neaten up
+            st.session_state.df = st.session_state.df.sort_values("date").reset_index(drop=True)
+            st.session_state.ambiguous_reviewed = True
+            st.success("All ambiguous dates corrected.")
+            st.session_state.stage = "preview"
+            st.rerun()
+
 
 # ---- PREVIEW
 elif st.session_state.stage == "preview":
@@ -556,6 +557,7 @@ elif st.session_state.stage == "graph":
     if start_over:
         reset_to_upload()
         st.rerun()
+
 
 
 
