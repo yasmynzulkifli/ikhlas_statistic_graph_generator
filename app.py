@@ -215,7 +215,7 @@ def draw_dual_axis_with_labels(df: pd.DataFrame, hotel_code: str, granularity: s
     ax1.set_ylabel("Rooms Sold (units)")
     ax1.tick_params(axis="x", rotation=45)
     for r, v in zip(bars, rooms):
-        ax1.text(r.get_x() + r.get_width()/2, r.get_height(), f"{int(v)} Unit",
+        ax1.text(r.get_x() + r.get_width()/2, r.get_height(), f"{int(v)}",
                  ha="center", va="bottom", fontsize=10)
 
     ax2 = ax1.twinx()
@@ -557,6 +557,7 @@ elif st.session_state.stage == "graph":
     if start_over:
         reset_to_upload()
         st.rerun()
+
 
 
 
