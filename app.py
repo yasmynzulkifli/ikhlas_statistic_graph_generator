@@ -270,33 +270,33 @@ if st.session_state.stage == "upload":
                               icon= ":material/arrow_forward:",
                               disabled=(up is None))
 
-if proceed:
-    try:
-        # Save file contents into session_state right away
-        file_bytes = up.getvalue()
-        st.session_state["uploaded_file_bytes"] = file_bytes
-        st.session_state["uploaded_file_name"] = up.name
-
-        # Load DataFrame from the saved bytes
-        if up.name.lower().endswith(".xlsx"):
-            df_raw = pd.read_excel(io.BytesIO(file_bytes))
+    if proceed:
+        try:
+            # Save file contents into session_state right away
+            file_bytes = up.getvalue()
+            st.session_state["uploaded_file_bytes"] = file_bytes
+            st.session_state["uploaded_file_name"] = up.name
+    
+            # Load DataFrame from the saved bytes
+            if up.name.lower().endswith(".xlsx"):
+                df_raw = pd.read_excel(io.BytesIO(file_bytes))
+            else:
+                df_raw = pd.read_csv(io.BytesIO(file_bytes))
+    
+            df = normalize_columns(df_raw)
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+            st.stop()
+    
+        st.session_state.df = df.copy()
+        st.session_state.orig_df = df.copy()
+        st.session_state.file_name = up.name
+    
+        if int(df["ambiguous"].sum()) > 0 and not st.session_state.get("ambiguous_reviewed", False):
+            st.session_state.stage = "ambiguity"
         else:
-            df_raw = pd.read_csv(io.BytesIO(file_bytes))
-
-        df = normalize_columns(df_raw)
-    except Exception as e:
-        st.error(f"Error reading file: {e}")
-        st.stop()
-
-    st.session_state.df = df.copy()
-    st.session_state.orig_df = df.copy()
-    st.session_state.file_name = up.name
-
-    if int(df["ambiguous"].sum()) > 0 and not st.session_state.get("ambiguous_reviewed", False):
-        st.session_state.stage = "ambiguity"
-    else:
-        st.session_state.stage = "preview"
-    st.rerun()
+            st.session_state.stage = "preview"
+        st.rerun()
 
 # ---- AMBIGUITY REVIEW (inline editor instead of st.modal)
 elif st.session_state.stage == "ambiguity":
@@ -497,5 +497,6 @@ elif st.session_state.stage == "graph":
     if start_over:
         reset_to_upload()
         st.rerun()
+
 
 
