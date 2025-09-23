@@ -79,6 +79,53 @@ div[data-testid="stContainer"][aria-live="polite"][role="region"] > div:has(> di
 # ===== Helpers =====
 AMBIGUOUS_REGEX = re.compile(r"^\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\s*$")
 
+def _coerce_excel_serial(x):
+    """Handle Excel serial dates (number of days since 1899-12-30)."""
+    try:
+        # numeric-like?
+        if pd.isna(x):
+            return pd.NaT
+        if isinstance(x, (int, float)) and not isinstance(x, bool):
+            # Excel serial to Timestamp
+            return pd.Timestamp("1899-12-30") + pd.to_timedelta(int(x), unit="D")
+        # strings that are numbers
+        if isinstance(x, str) and x.strip().isdigit():
+            return pd.Timestamp("1899-12-30") + pd.to_timedelta(int(x.strip()), unit="D")
+    except Exception:
+        pass
+    return pd.NaT
+
+def _parse_any_date(s):
+    """
+    Try common MY formats + ISO + Excel serials.
+    Returns pandas.Timestamp or NaT.
+    """
+    if pd.isna(s):
+        return pd.NaT
+    s_str = str(s).strip()
+
+    # Try Excel serial first
+    ex = _coerce_excel_serial(s)
+    if pd.notna(ex):
+        return ex
+
+    # Fast paths with explicit formats
+    for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%d-%m-%y", "%d/%m/%y"):
+        try:
+            return pd.to_datetime(s_str, format=fmt, errors="raise")
+        except Exception:
+            pass
+
+    # Two generic passes (dayfirst True/False) without deprecated infer flag
+    for dayfirst in (True, False):
+        try:
+            return pd.to_datetime(s_str, dayfirst=dayfirst, errors="raise")
+        except Exception:
+            pass
+
+    # Give up
+    return pd.NaT
+
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df.columns = [c.strip().replace(" ", "_").lower() for c in df.columns]
@@ -86,19 +133,31 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     if set(df.columns) != expected:
         raise ValueError("Uploaded file must contain exactly these columns: date, sales, bilik_sold")
 
-    df["date_raw"] = df["date"].astype(str).str.strip()
-    dt_dayfirst   = pd.to_datetime(df["date_raw"], dayfirst=True,  errors="coerce", infer_datetime_format=True)
-    dt_monthfirst = pd.to_datetime(df["date_raw"], dayfirst=False, errors="coerce", infer_datetime_format=True)
-    parsed = dt_dayfirst.copy().fillna(dt_monthfirst)
+    # Keep raw
+    df["date_raw"] = df["date"]
 
-    ambiguous = (dt_dayfirst.notna() & dt_monthfirst.notna() &
-                 (dt_dayfirst.dt.normalize() != dt_monthfirst.dt.normalize()))
+    # Parse with robust fallback (no infer_datetime_format)
+    parsed = df["date"].apply(_parse_any_date)
 
+    # Ambiguity detector for strings like 03/04/2024 (DD/MM vs MM/DD)
     def looks_ambiguous(s):
         m = AMBIGUOUS_REGEX.match(str(s))
-        if not m: return False
+        if not m:
+            return False
         d, mth = int(m.group(1)), int(m.group(2))
         return d <= 12 and mth <= 12
+
+    df["date"] = parsed
+    df["ambiguous"] = df["date_raw"].astype(str).map(looks_ambiguous)
+
+    # Coerce numerics (show clean error if bad)
+    df["sales"] = pd.to_numeric(df["sales"], errors="raise")
+    df["bilik_sold"] = pd.to_numeric(df["bilik_sold"], errors="raise")
+
+    # Optional: highlight truly invalid rows (not just ambiguous)
+    # You already gate later, so we just sort and return.
+    return df.sort_values("date").reset_index(drop=True)
+
 
     df["date"] = parsed
     df["ambiguous"] = ambiguous | df["date_raw"].map(looks_ambiguous)
@@ -497,6 +556,7 @@ elif st.session_state.stage == "graph":
     if start_over:
         reset_to_upload()
         st.rerun()
+
 
 
 
