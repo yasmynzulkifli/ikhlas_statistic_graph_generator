@@ -552,68 +552,53 @@ elif st.session_state.stage == "graph":
     fig, title = draw_dual_axis_with_labels(gdf, hotel, granularity=gran)
     st.pyplot(fig)
 
-# --- Download & Start Over ---
+    fig, title = draw_dual_axis_with_labels(gdf, hotel, granularity=gran)
+
+    # Prepare PNG buffer
     buf = io.BytesIO()
     fig.savefig(buf, format="png", bbox_inches="tight", dpi=200)
     buf.seek(0)
 
-    # col1, col2 = st.columns([1,1])
-    # with col1:
-    #     clicked = st.download_button(
-    #         "Download Chart (PNG)",
-    #         data=buf.getvalue(),
-    #         file_name=f"{title}.png",
-    #         mime="image/png",
-    #         type="primary",
-    #         key="dl_chart",
-    #         help="After download, you'll be returned to the Upload step.",
-    #         icon=':material/download:'
-    #     )
-
-    # with col2:
-    #     start_over = st.button("Start Over", key="btn_start_over", type="secondary")
-
-    # if clicked:
-    #     reset_to_upload()
-    #     st.rerun()
-
-    # if start_over:
-    #     reset_to_upload()
-    #     st.rerun()
-
-with st.container(border=True):
-    top_left, top_center, top_right = st.columns([1, 6, 1])
-
-    with top_center:
-        st.markdown(
-            "<div style='text-align:center;font-weight:600;'>Rooms vs Sales Chart</div>",
-            unsafe_allow_html=True,
-        )
-
-    with top_left:
-        clicked = st.download_button(
-            label="",
-            data=buf.getvalue(),
-            file_name=f"{title}.png",
-            mime="image/png",
-            key="dl_chart",
-            type="primary",
-            help="Download chart as PNG",
-            icon=":material/download:",
-        )
-
-    st.pyplot(fig, use_container_width=True)
+    
+    
+        # ----- Graph card with download on top-right -----
+    with st.container(border=True):
+        top_left, top_center, top_right = st.columns([1, 6, 1])
+    
+        with top_center:
+            st.markdown(
+                "<div style='text-align:center;font-weight:600;'>Rooms vs Sales Chart</div>",
+                unsafe_allow_html=True,
+            )
+    
+        with top_left:
+            clicked = st.download_button(
+                label="",
+                data=buf.getvalue(),
+                file_name=f"{title}.png",
+                mime="image/png",
+                key="dl_chart",
+                type="primary",
+                help="Download chart as PNG",
+                icon=":material/download:",
+            )
+    
+        st.pyplot(fig, use_container_width=True)
+    
+    
+    # ----- Start Over button below the card -----
+    start_over = st.button("Start Over", key="btn_start_over", type="secondary")
+    
+    if clicked:
+        reset_to_upload()
+        st.rerun()
+    
+    if start_over:
+        reset_to_upload()
+        st.rerun()
+    
 
 
-# ----- Start Over button below the card -----
-start_over = st.button("Start Over", key="btn_start_over", type="secondary")
-
-if clicked:
-    reset_to_upload()
-    st.rerun()
-
-if start_over:
-    reset_to_upload()
 
 
 
