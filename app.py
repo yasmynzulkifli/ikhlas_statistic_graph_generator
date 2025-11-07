@@ -208,7 +208,7 @@ def draw_dual_axis_with_labels(df: pd.DataFrame, hotel_code: str, granularity: s
     rooms = df["bilik_sold"].astype(float).values
     sales = df["sales"].astype(float).values
 
-    fig, ax1 = plt.subplots(figsize=(11,6))
+    fig, ax1 = plt.subplots(figsize=(10,5))
     sns.set(style="whitegrid", rc={"grid.alpha": 0.3})
 
     bars = ax1.bar(labels, rooms, color="#ffc7c7", label="Room Sold")
@@ -514,17 +514,40 @@ elif st.session_state.stage == "graph":
     base_df = st.session_state.df; hotel = st.session_state.hotel
     st.subheader("Graph & Data")
     k = kpis(base_df)
-    c1,c2,c3 = st.columns(3)
-    c1.metric("Total Sales (RM)", f"{k['total_sales']:,.2f}")
-    c2.metric("Total Rooms", f"{k['total_rooms']:,}")
-    c3.metric("Period", k["period"])
-    with st.expander("Highlights", expanded=False):
-        sv = "-" if pd.isna(k["best_sales_value"]) else f"RM{k['best_sales_value']:,.2f}"
-        rv = "-" if pd.isna(k["best_rooms_value"]) else f"{int(k['best_rooms_value']):,}"
-        st.write(f"• Highest Sales: **{sv}** on **{k['best_sales_day']}**")
-        st.write(f"• Most Rooms Sold: **{rv}** on **{k['best_rooms_day']}**")
+    # c1,c2,c3 = st.columns(3)
+    # c1.metric("Total Sales (RM)", f"{k['total_sales']:,.2f}")
+    # c2.metric("Total Rooms", f"{k['total_rooms']:,}")
+    # c3.metric("Period", k["period"])
+    # with st.expander("Highlights", expanded=False):
+    #     sv = "-" if pd.isna(k["best_sales_value"]) else f"RM{k['best_sales_value']:,.2f}"
+    #     rv = "-" if pd.isna(k["best_rooms_value"]) else f"{int(k['best_rooms_value']):,}"
+    #     st.write(f"• Highest Sales: **{sv}** on **{k['best_sales_day']}**")
+    #     st.write(f"• Most Rooms Sold: **{rv}** on **{k['best_rooms_day']}**")
 
-    gran = st.selectbox("Granularity", ["Daily","Weekly","Monthly"], index=0)
+    # gran = st.selectbox("Granularity", ["Daily","Weekly","Monthly"], index=0)
+
+    with st.container(border=True):
+    c1, c2, c3, c4 = st.columns([2, 2, 2, 1], vertical_alignment="center")
+
+    with c1:
+        st.metric("**Period**", k["period"])
+        
+
+    with c2:
+        st.metric("**Total Rooms**", f"{k['total_rooms']:,}")
+
+    with c3:
+        st.metric("**Total Sales (RM)**", f"RM {k['total_sales']:,.2f}")
+
+    with c4:
+        st.markdown("**Granularity**")
+        gran = st.selectbox(
+            "",
+            ["Daily", "Weekly", "Monthly"],
+            index=0,
+            label_visibility="collapsed",
+        )
+    
     gdf = aggregate(base_df, granularity=gran)
     fig, title = draw_dual_axis_with_labels(gdf, hotel, granularity=gran)
     st.pyplot(fig)
@@ -534,29 +557,63 @@ elif st.session_state.stage == "graph":
     fig.savefig(buf, format="png", bbox_inches="tight", dpi=200)
     buf.seek(0)
 
-    col1, col2 = st.columns([1,1])
-    with col1:
+    # col1, col2 = st.columns([1,1])
+    # with col1:
+    #     clicked = st.download_button(
+    #         "Download Chart (PNG)",
+    #         data=buf.getvalue(),
+    #         file_name=f"{title}.png",
+    #         mime="image/png",
+    #         type="primary",
+    #         key="dl_chart",
+    #         help="After download, you'll be returned to the Upload step.",
+    #         icon=':material/download:'
+    #     )
+
+    # with col2:
+    #     start_over = st.button("Start Over", key="btn_start_over", type="secondary")
+
+    # if clicked:
+    #     reset_to_upload()
+    #     st.rerun()
+
+    # if start_over:
+    #     reset_to_upload()
+    #     st.rerun()
+
+with st.container(border=True):
+    top_left, top_center, top_right = st.columns([1, 6, 1])
+
+    with top_center:
+        st.markdown(
+            "<div style='text-align:center;font-weight:600;'>Rooms vs Sales Chart</div>",
+            unsafe_allow_html=True,
+        )
+
+    with top_left:
         clicked = st.download_button(
-            "Download Chart (PNG)",
+            label="",
             data=buf.getvalue(),
             file_name=f"{title}.png",
             mime="image/png",
-            type="primary",
             key="dl_chart",
-            help="After download, you'll be returned to the Upload step.",
-            icon=':material/download:'
+            type="primary",
+            help="Download chart as PNG",
+            icon=":material/download:",
         )
 
-    with col2:
-        start_over = st.button("Start Over", key="btn_start_over", type="secondary")
+    st.pyplot(fig, use_container_width=True)
 
-    if clicked:
-        reset_to_upload()
-        st.rerun()
 
-    if start_over:
-        reset_to_upload()
-        st.rerun()
+# ----- Start Over button below the card -----
+start_over = st.button("Start Over", key="btn_start_over", type="secondary")
+
+if clicked:
+    reset_to_upload()
+    st.rerun()
+
+if start_over:
+    reset_to_upload()
 
 
 
