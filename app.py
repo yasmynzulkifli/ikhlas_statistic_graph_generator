@@ -527,7 +527,7 @@ elif st.session_state.stage == "graph":
     # gran = st.selectbox("Granularity", ["Daily","Weekly","Monthly"], index=0)
 
     with st.container(border=True):
-    c1, c2, c3, c4 = st.columns([2, 2, 2, 1], vertical_alignment="center")
+        c1, c2, c3, c4 = st.columns([2, 2, 2, 1], vertical_alignment="center")
 
     with c1:
         st.metric("**Period**", k["period"])
@@ -614,6 +614,7 @@ if clicked:
 
 if start_over:
     reset_to_upload()
+
 
 
 
