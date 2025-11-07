@@ -547,11 +547,8 @@ elif st.session_state.stage == "graph":
             index=0,
             label_visibility="collapsed",
         )
-    
     gdf = aggregate(base_df, granularity=gran)
-    fig, title = draw_dual_axis_with_labels(gdf, hotel, granularity=gran)
-    st.pyplot(fig)
-
+        # Build figure
     fig, title = draw_dual_axis_with_labels(gdf, hotel, granularity=gran)
 
     # Prepare PNG buffer
@@ -559,44 +556,46 @@ elif st.session_state.stage == "graph":
     fig.savefig(buf, format="png", bbox_inches="tight", dpi=200)
     buf.seek(0)
 
+
+
+    # ----- Graph card with download on top-right -----
+with st.container(border=True):
+    top_left, top_center, top_right = st.columns([1, 6, 1])
+
+    with top_center:
+        st.markdown(
+            "<div style='text-align:center;font-weight:600;'>Rooms vs Sales Chart</div>",
+            unsafe_allow_html=True,
+        )
+
+    with top_left:
+        clicked = st.download_button(
+            label="",
+            data=buf.getvalue(),
+            file_name=f"{title}.png",
+            mime="image/png",
+            key="dl_chart",
+            type="primary",
+            help="Download chart as PNG",
+            icon=":material/download:",
+        )
+
+    st.pyplot(fig, use_container_width=True)
+
+
+# ----- Start Over button below the card -----
+start_over = st.button("Start Over", key="btn_start_over", type="secondary")
+
+if clicked:
+    reset_to_upload()
+    st.rerun()
+
+if start_over:
+    reset_to_upload()
+    st.rerun()
+
     
-    
-        # ----- Graph card with download on top-right -----
-    with st.container(border=True):
-        top_left, top_center, top_right = st.columns([1, 6, 1])
-    
-        with top_center:
-            st.markdown(
-                "<div style='text-align:center;font-weight:600;'>Rooms vs Sales Chart</div>",
-                unsafe_allow_html=True,
-            )
-    
-        with top_left:
-            clicked = st.download_button(
-                label="",
-                data=buf.getvalue(),
-                file_name=f"{title}.png",
-                mime="image/png",
-                key="dl_chart",
-                type="primary",
-                help="Download chart as PNG",
-                icon=":material/download:",
-            )
-    
-        st.pyplot(fig, use_container_width=True)
-    
-    
-    # ----- Start Over button below the card -----
-    start_over = st.button("Start Over", key="btn_start_over", type="secondary")
-    
-    if clicked:
-        reset_to_upload()
-        st.rerun()
-    
-    if start_over:
-        reset_to_upload()
-        st.rerun()
-    
+
 
 
 
