@@ -27,7 +27,7 @@ st.caption("Upload a combined CSV (Date, Hotel, Sales, Bilik Sold) to explore pe
 st.markdown("---")
 
 # Fixed hotel order — PJ added at end when available
-HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ"]
+HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD"]
 
 # Harmonious muted qualitative palette — easy on the eyes, clearly distinct
 HOTEL_PALETTE = [
@@ -42,6 +42,7 @@ HOTEL_PALETTE = [
     "#99cc33",  # PL  — warm brown
     "#669900",  # NL  — warm grey
     "#466900",  # PJ  — deep teal
+    "#5f7c8a",  # PD — muted blue-grey
 ]
 
 def parse_date_col(series):
