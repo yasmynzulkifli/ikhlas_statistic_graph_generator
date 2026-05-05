@@ -23,7 +23,7 @@ st.set_page_config(
 #     st.page_link("pages/puan_yasmin.py",       label="👩‍💼 Puan Yasmin")
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-HOTEL_CODES = ["Choose Hotel","ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ"]
+HOTEL_CODES = ["Choose Hotel","ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD"]
 # ── Session state init ────────────────────────────────────────────────────────
 for k, v in {
     "stage": "upload",
