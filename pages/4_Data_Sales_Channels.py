@@ -21,6 +21,7 @@ COLORS = {
     "AGODA":    "#cc3399",
     "BOOKING":  "#3399cc",
     "EXPEDIA":  "#466900",
+    "WEBSITE": "#9900ff",
 }
 
 # Column name → display label → colour key
@@ -30,6 +31,7 @@ BAR_COLS = [
     ("AGODA",    "Agoda",     "AGODA"),
     ("B.COM",    "Booking",   "BOOKING"),
     ("EXPEDIA",  "Expedia",   "EXPEDIA"),
+    ("WEBSITE", "Website", "WEBSITE")
 ]
 # Line channels — S/D % for each (same colour as bar)
 LINE_COLS = [
@@ -37,6 +39,7 @@ LINE_COLS = [
     ("S/D % Agoda",        "S/D% Agoda",      "AGODA"),
     ("S/D % Booking.Com",  "S/D% Booking",    "BOOKING"),
     ("S/D % Expedia",      "S/D% Expedia",    "EXPEDIA"),
+    ("S/D % Website",      "S/D% Website",    "Website"),
 ]
 
 
@@ -70,8 +73,8 @@ def load_df(file_bytes, fname):
     raw.columns = [str(c).strip() for c in raw.columns]
 
     # Verify required columns exist
-    required = ["HOTEL","SALES","WALK IN","AGODA","B.COM","EXPEDIA",
-                "S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com","S/D % Expedia"]
+    required = ["HOTEL","SALES","WALK IN","AGODA","B.COM","EXPEDIA","WEBSITE",
+                "S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com","S/D % Expedia","S/D% Website"]
     missing  = [r for r in required if find_col(raw, [r]) is None]
     if missing:
         st.error(f"Missing columns: **{', '.join(missing)}**. Found: {list(raw.columns)}")
