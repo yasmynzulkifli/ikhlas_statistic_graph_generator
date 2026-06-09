@@ -21,28 +21,29 @@ COLORS = {
     "AGODA":    "#cc3399",
     "BOOKING":  "#3399cc",
     "EXPEDIA":  "#466900",
-    "WEBSITE": "#9900ff",
+    "WEBSITE":  "#9900ff",
 }
 
 # Column name → display label → colour key
-# Bar channels (grouped, 4 OTA/walkin channels)
+# Bar channels (grouped, 5 channels)
 BAR_COLS = [
     ("WALK IN",  "Walk In",   "WALK IN"),
     ("AGODA",    "Agoda",     "AGODA"),
     ("B.COM",    "Booking",   "BOOKING"),
     ("EXPEDIA",  "Expedia",   "EXPEDIA"),
-    ("WEBSITE", "Website", "WEBSITE")
+    ("WEBSITE",  "Website",   "WEBSITE"),   
 ]
+
 # Line channels — S/D % for each (same colour as bar)
 LINE_COLS = [
     ("S/D % Walk In",      "S/D% Walk In",    "WALK IN"),
     ("S/D % Agoda",        "S/D% Agoda",      "AGODA"),
     ("S/D % Booking.Com",  "S/D% Booking",    "BOOKING"),
     ("S/D % Expedia",      "S/D% Expedia",    "EXPEDIA"),
-    ("S/D % Website",      "S/D% Website",    "Website"),
+    ("S/D % Website",      "S/D% Website",    "WEBSITE"),  
 ]
 
-
+# ✅ "PD" was already present in HOTEL_ORDER — no change needed here
 HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD"]
 
 # ── Session state ─────────────────────────────────────────────────────────────
@@ -73,8 +74,10 @@ def load_df(file_bytes, fname):
     raw.columns = [str(c).strip() for c in raw.columns]
 
     # Verify required columns exist
+    # ✅ Fixed: "S/D% Website" → "S/D % Website" (added space before %)
     required = ["HOTEL","SALES","WALK IN","AGODA","B.COM","EXPEDIA","WEBSITE",
-                "S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com","S/D % Expedia","S/D% Website"]
+                "S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com",
+                "S/D % Expedia","S/D % Website"]
     missing  = [r for r in required if find_col(raw, [r]) is None]
     if missing:
         st.error(f"Missing columns: **{', '.join(missing)}**. Found: {list(raw.columns)}")
@@ -85,6 +88,7 @@ def load_df(file_bytes, fname):
         if c != "HOTEL":
             raw[c] = pd.to_numeric(raw[c], errors="coerce").fillna(0)
 
+    # ✅ Strip whitespace from hotel codes so "PD " matches "PD"
     raw["HOTEL"] = raw["HOTEL"].astype(str).str.strip().str.upper()
 
     # Sort by fixed hotel order
@@ -183,10 +187,10 @@ def draw_chart(df: pd.DataFrame):
 
     # ── S/D % table in its own axes ───────────────────────────────────────────
     ax_tbl.axis("off")
-    table_rows    = []
-    row_labels    = []
+    table_rows     = []
+    row_labels     = []
     row_colors_tbl = []
-    cell_colors   = []
+    cell_colors    = []
 
     for col, label, ck in LINE_COLS:
         vals = df[col].values.astype(float)
@@ -235,7 +239,7 @@ st.markdown("---")
 if st.session_state.py_stage == "upload":
     with st.container(border=True):
         st.markdown("#### 📂 Upload Report File")
-        st.caption("Expected columns: Hotel, Walk In, Agoda, B.Com, Expedia, S/D % Walk In, S/D % Agoda, S/D % Booking.Com, S/D % Expedia")
+        st.caption("Expected columns: Hotel, Walk In, Agoda, B.Com, Expedia, Website, S/D % Walk In, S/D % Agoda, S/D % Booking.Com, S/D % Expedia, S/D % Website")
 
         up = st.file_uploader(
             "Drop your CSV/Excel file here",
@@ -297,7 +301,13 @@ elif st.session_state.py_stage == "graph":
         def sd_word(val):
             return f"increased by {val:.2f}%" if val >= 0 else f"decreased by {abs(val):.2f}%"
 
-        channels = [("Walk-ins","WALK IN","S/D % Walk In"),("Agoda","AGODA","S/D % Agoda"),("Booking.com","B.COM","S/D % Booking.Com"),("Expedia","EXPEDIA","S/D % Expedia")]
+        channels = [
+            ("Walk-ins",    "WALK IN",  "S/D % Walk In"),
+            ("Agoda",       "AGODA",    "S/D % Agoda"),
+            ("Booking.com", "B.COM",    "S/D % Booking.Com"),
+            ("Expedia",     "EXPEDIA",  "S/D % Expedia"),
+            ("Website",     "WEBSITE",  "S/D % Website"),   # ✅ added Website channel
+        ]
 
         def make_block(row):
             lines = [f"{row['HOTEL']} – Sales {sd_word(row['S/D % Sales'])} compared to last month"]
@@ -372,8 +382,8 @@ elif st.session_state.py_stage == "graph":
     # Data table
     with st.expander("📋 View data table"):
         show = df.copy()
-        fmt  = {c: "RM {:.2f}" for c in ["SALES","WALK IN","AGODA","B.COM","EXPEDIA"]}
-        fmt.update({c: "{:.2f}%" for c in ["S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com","S/D % Expedia"]})
+        fmt  = {c: "RM {:.2f}" for c in ["SALES","WALK IN","AGODA","B.COM","EXPEDIA","WEBSITE"]}
+        fmt.update({c: "{:.2f}%" for c in ["S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com","S/D % Expedia","S/D % Website"]})
         st.dataframe(show.style.format(fmt), use_container_width=True, hide_index=True)
 
 st.markdown("---")
@@ -383,4 +393,3 @@ st.markdown(
     "</p>",
     unsafe_allow_html=True
 )
-
