@@ -14,16 +14,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# with st.sidebar:
-#     st.image("https://img.icons8.com/fluency/96/hotel.png", width=60)
-#     st.markdown("## 🏨 Ikhlas Hotel")
-#     st.markdown("---")
-#     st.page_link("pages/home.py",              label="🏠 Home")
-#     st.page_link("pages/data_sales_single.py", label="📊 Sales — Single Hotel")
-#     st.page_link("pages/data_sales_all.py",    label="📈 Sales — All Hotels")
-#     st.page_link("pages/puan_yasmin.py",       label="👩‍💼 Puan Yasmin")
-#     st.page_link("pages/5_Data_Payment_Channels.py", label="💳 Payment Channels")
-
 # ── Colour map ────────────────────────────────────────────────────────────────
 COLORS = {
     "CASH":  "#ff9900",
@@ -33,21 +23,19 @@ COLORS = {
 }
 
 # Column name → display label → colour key
-# Bar channels (grouped, 4 OTA/walkin channels)
 BAR_COLS = [
     ("CASH",  "Cash",  "CASH"),
     ("OTA",   "OTA",   "OTA"),
     ("CC",    "CC",    "CC"),
     ("QR",    "QR",    "QR"),
 ]
-# Line channels — S/D % for each (same colour as bar)
+
 LINE_COLS = [
     ("S/D % Cash",  "S/D% Cash",  "CASH"),
     ("S/D % OTA",   "S/D% OTA",   "OTA"),
     ("S/D % CC",    "S/D% CC",    "CC"),
     ("S/D % QR",    "S/D% QR",    "QR"),
 ]
-
 
 HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD"]
 
@@ -91,6 +79,7 @@ def load_df(file_bytes, fname):
         if c != "HOTEL":
             raw[c] = pd.to_numeric(raw[c], errors="coerce").fillna(0)
 
+    # Strip whitespace from hotel codes so "PD " matches "PD"
     raw["HOTEL"] = raw["HOTEL"].astype(str).str.strip().str.upper()
 
     # Sort by fixed hotel order
@@ -112,7 +101,6 @@ def draw_chart(df: pd.DataFrame):
 
     fig_w = max(13, n * n_bars * 0.22 + 3)
 
-    # GridSpec: chart (top, 70%) + table (bottom, 30%) with breathing room
     fig = plt.figure(figsize=(fig_w, 10))
     fig.patch.set_facecolor("white")
     gs  = fig.add_gridspec(2, 1, height_ratios=[3, 1], hspace=0.2)
@@ -189,10 +177,10 @@ def draw_chart(df: pd.DataFrame):
 
     # ── S/D % table in its own axes ───────────────────────────────────────────
     ax_tbl.axis("off")
-    table_rows    = []
-    row_labels    = []
+    table_rows     = []
+    row_labels     = []
     row_colors_tbl = []
-    cell_colors   = []
+    cell_colors    = []
 
     for col, label, ck in LINE_COLS:
         vals = df[col].values.astype(float)
@@ -241,13 +229,13 @@ st.markdown("---")
 if st.session_state.pc_stage == "upload":
     with st.container(border=True):
         st.markdown("#### 📂 Upload Report File")
-        st.caption("Expected columns: Hotel, Walk In, Agoda, B.Com, Expedia, S/D % Walk In, S/D % Agoda, S/D % Booking.Com, S/D % Expedia")
+        st.caption("Expected columns: Hotel, Cash, OTA, CC, QR, S/D % Cash, S/D % OTA, S/D % CC, S/D % QR")
 
         up = st.file_uploader(
             "Drop your CSV/Excel file here",
             type=["csv","xlsx"], accept_multiple_files=False,
             label_visibility="collapsed",
-            key=f"py_uploader_{st.session_state.pc_uploader_key}"
+            key=f"pc_uploader_{st.session_state.pc_uploader_key}"  # ✅ Fixed: was "py_uploader_"
         )
         proceed = st.button("Proceed →", type="primary",
                             disabled=(up is None), use_container_width=True)
@@ -272,7 +260,7 @@ elif st.session_state.pc_stage == "graph":
     # KPIs
     with st.container(border=True):
         cols = st.columns(5)
-        cols[0].metric("Total Sales",    f"RM {df['SALES'].sum():,.2f}")
+        cols[0].metric("Total Sales", f"RM {df['SALES'].sum():,.2f}")
         cols[1].metric("Total Cash",  f"RM {df['CASH'].sum():,.2f}")
         cols[2].metric("Total OTA",   f"RM {df['OTA'].sum():,.2f}")
         cols[3].metric("Total CC",    f"RM {df['CC'].sum():,.2f}")
@@ -296,20 +284,25 @@ elif st.session_state.pc_stage == "graph":
 
     st.pyplot(fig)
 
-    # Copyable text summary — single iframe so JS+buttons share same context
+    # Copyable text summary
     with st.expander("📋 Copy-able Text Summary", expanded=False):
         import json, streamlit.components.v1 as components
 
         def sd_word(val):
             return f"increased by {val:.2f}%" if val >= 0 else f"decreased by {abs(val):.2f}%"
 
-        channels = [("Cash","CASH","S/D % Cash"),("OTA","OTA","S/D % OTA"),("CC","CC","S/D % CC"),("QR","QR","S/D % QR")]
+        channels = [
+            ("Cash", "CASH", "S/D % Cash"),
+            ("OTA",  "OTA",  "S/D % OTA"),
+            ("CC",   "CC",   "S/D % CC"),
+            ("QR",   "QR",   "S/D % QR"),
+        ]
 
         def make_block(row):
             lines = [f"{row['HOTEL']} – Sales {sd_word(row['S/D % Sales'])} compared to last month"]
             for idx, (name, col, sd_col) in enumerate(channels, start=1):
                 if row[col] == 0:
-                    lines.append(f"{idx}.  No reservation in {name}")
+                    lines.append(f"{idx}.  No transaction via {name}")
                 else:
                     lines.append(f"{idx}.  {name} {sd_word(row[sd_col])}")
             return "\n".join(lines)
@@ -381,7 +374,6 @@ elif st.session_state.pc_stage == "graph":
         fmt  = {c: "RM {:.2f}" for c in ["SALES","CASH","OTA","CC","QR"]}
         fmt.update({c: "{:.2f}%" for c in ["S/D % Sales","S/D % Cash","S/D % OTA","S/D % CC","S/D % QR"]})
         st.dataframe(show.style.format(fmt), use_container_width=True, hide_index=True)
-
 
 st.markdown("---")
 st.markdown(
