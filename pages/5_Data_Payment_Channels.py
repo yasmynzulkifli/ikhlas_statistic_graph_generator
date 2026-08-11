@@ -37,7 +37,7 @@ LINE_COLS = [
     ("S/D % QR",    "S/D% QR",    "QR"),
 ]
 
-HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD"]
+HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD","DC","NS"]
 
 # ── Session state ─────────────────────────────────────────────────────────────
 for k, v in {"pc_stage":"upload", "pc_df":None, "pc_file":"", "pc_uploader_key":0}.items():
