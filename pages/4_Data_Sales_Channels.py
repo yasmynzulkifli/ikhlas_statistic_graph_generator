@@ -44,7 +44,7 @@ LINE_COLS = [
 ]
 
 # ✅ "PD" was already present in HOTEL_ORDER — no change needed here
-HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD"]
+HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD","DC","NS"]
 
 # ── Session state ─────────────────────────────────────────────────────────────
 for k, v in {"py_stage":"upload", "py_df":None, "py_file":"", "py_uploader_key":0}.items():
