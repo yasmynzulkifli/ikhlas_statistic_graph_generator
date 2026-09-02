@@ -22,16 +22,18 @@ COLORS = {
     "BOOKING":  "#3399cc",
     "EXPEDIA":  "#466900",
     "WEBSITE":  "#9900ff",
+    "TRIP":     "#e63946",   # ✅ Trip.com — distinct red
 }
 
 # Column name → display label → colour key
-# Bar channels (grouped, 5 channels)
+# Bar channels (grouped, 6 channels)
 BAR_COLS = [
-    ("WALK IN",  "Walk In",   "WALK IN"),
-    ("AGODA",    "Agoda",     "AGODA"),
-    ("B.COM",    "Booking",   "BOOKING"),
-    ("EXPEDIA",  "Expedia",   "EXPEDIA"),
-    ("WEBSITE",  "Website",   "WEBSITE"),   
+    ("WALK IN",   "Walk In",   "WALK IN"),
+    ("AGODA",     "Agoda",     "AGODA"),
+    ("B.COM",     "Booking",   "BOOKING"),
+    ("EXPEDIA",   "Expedia",   "EXPEDIA"),
+    ("WEBSITE",   "Website",   "WEBSITE"),
+    ("TRIP.COM",  "Trip.com",  "TRIP"),    # ✅ added
 ]
 
 # Line channels — S/D % for each (same colour as bar)
@@ -40,10 +42,10 @@ LINE_COLS = [
     ("S/D % Agoda",        "S/D% Agoda",      "AGODA"),
     ("S/D % Booking.Com",  "S/D% Booking",    "BOOKING"),
     ("S/D % Expedia",      "S/D% Expedia",    "EXPEDIA"),
-    ("S/D % Website",      "S/D% Website",    "WEBSITE"),  
+    ("S/D % Website",      "S/D% Website",    "WEBSITE"),
+    ("S/D % Trip.Com",     "S/D% Trip.com",   "TRIP"),   # ✅ added
 ]
 
-# ✅ "PD" was already present in HOTEL_ORDER — no change needed here
 HOTEL_ORDER = ["ZI","KZ","BI","NC","MF","ST","JJ","PN","PL","NL","PJ","PD","DC","NS"]
 
 # ── Session state ─────────────────────────────────────────────────────────────
@@ -74,11 +76,14 @@ def load_df(file_bytes, fname):
     raw.columns = [str(c).strip() for c in raw.columns]
 
     # Verify required columns exist
-    # ✅ Fixed: "S/D% Website" → "S/D % Website" (added space before %)
-    required = ["HOTEL","SALES","WALK IN","AGODA","B.COM","EXPEDIA","WEBSITE",
-                "S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com",
-                "S/D % Expedia","S/D % Website"]
-    missing  = [r for r in required if find_col(raw, [r]) is None]
+    required = [
+        "HOTEL", "SALES", "WALK IN", "AGODA", "B.COM", "EXPEDIA", "WEBSITE",
+        "TRIP.COM",
+        "S/D % Sales", "S/D % Walk In", "S/D % Agoda",
+        "S/D % Booking.Com", "S/D % Expedia", "S/D % Website",
+        "S/D % Trip.Com",
+    ]
+    missing = [r for r in required if find_col(raw, [r]) is None]
     if missing:
         st.error(f"Missing columns: **{', '.join(missing)}**. Found: {list(raw.columns)}")
         st.stop()
@@ -88,7 +93,7 @@ def load_df(file_bytes, fname):
         if c != "HOTEL":
             raw[c] = pd.to_numeric(raw[c], errors="coerce").fillna(0)
 
-    # ✅ Strip whitespace from hotel codes so "PD " matches "PD"
+    # Strip whitespace from hotel codes
     raw["HOTEL"] = raw["HOTEL"].astype(str).str.strip().str.upper()
 
     # Sort by fixed hotel order
@@ -239,7 +244,11 @@ st.markdown("---")
 if st.session_state.py_stage == "upload":
     with st.container(border=True):
         st.markdown("#### 📂 Upload Report File")
-        st.caption("Expected columns: Hotel, Walk In, Agoda, B.Com, Expedia, Website, S/D % Walk In, S/D % Agoda, S/D % Booking.Com, S/D % Expedia, S/D % Website")
+        st.caption(
+            "Expected columns: Hotel, Walk In, Agoda, B.Com, Expedia, Website, Trip.Com, "
+            "S/D % Walk In, S/D % Agoda, S/D % Booking.Com, S/D % Expedia, "
+            "S/D % Website, S/D % Trip.Com"
+        )
 
         up = st.file_uploader(
             "Drop your CSV/Excel file here",
@@ -269,12 +278,13 @@ elif st.session_state.py_stage == "graph":
 
     # KPIs
     with st.container(border=True):
-        cols = st.columns(5)
+        cols = st.columns(6)
         cols[0].metric("Total Sales",    f"RM {df['SALES'].sum():,.2f}")
         cols[1].metric("Total Walk In",  f"RM {df['WALK IN'].sum():,.2f}")
         cols[2].metric("Total Agoda",    f"RM {df['AGODA'].sum():,.2f}")
         cols[3].metric("Total Booking",  f"RM {df['B.COM'].sum():,.2f}")
         cols[4].metric("Total Expedia",  f"RM {df['EXPEDIA'].sum():,.2f}")
+        cols[5].metric("Total Trip.com", f"RM {df['TRIP.COM'].sum():,.2f}")  # ✅ added
 
     st.markdown("")
 
@@ -294,7 +304,7 @@ elif st.session_state.py_stage == "graph":
 
     st.pyplot(fig)
 
-    # Copyable text summary — single iframe so JS+buttons share same context
+    # Copyable text summary
     with st.expander("📋 Copy-able Text Summary", expanded=False):
         import json, streamlit.components.v1 as components
 
@@ -302,11 +312,12 @@ elif st.session_state.py_stage == "graph":
             return f"increased by {val:.2f}%" if val >= 0 else f"decreased by {abs(val):.2f}%"
 
         channels = [
-            ("Walk-ins",    "WALK IN",  "S/D % Walk In"),
-            ("Agoda",       "AGODA",    "S/D % Agoda"),
-            ("Booking.com", "B.COM",    "S/D % Booking.Com"),
-            ("Expedia",     "EXPEDIA",  "S/D % Expedia"),
-            ("Website",     "WEBSITE",  "S/D % Website"),   # ✅ added Website channel
+            ("Walk-ins",    "WALK IN",   "S/D % Walk In"),
+            ("Agoda",       "AGODA",     "S/D % Agoda"),
+            ("Booking.com", "B.COM",     "S/D % Booking.Com"),
+            ("Expedia",     "EXPEDIA",   "S/D % Expedia"),
+            ("Website",     "WEBSITE",   "S/D % Website"),
+            ("Trip.com",    "TRIP.COM",  "S/D % Trip.Com"),   # ✅ added
         ]
 
         def make_block(row):
@@ -377,13 +388,17 @@ elif st.session_state.py_stage == "graph":
         {cards_html}
         </body></html>"""
 
-        components.html(html, height=len(all_blocks)*155+80, scrolling=True)
+        components.html(html, height=len(all_blocks)*170+80, scrolling=True)
 
     # Data table
     with st.expander("📋 View data table"):
         show = df.copy()
-        fmt  = {c: "RM {:.2f}" for c in ["SALES","WALK IN","AGODA","B.COM","EXPEDIA","WEBSITE"]}
-        fmt.update({c: "{:.2f}%" for c in ["S/D % Sales","S/D % Walk In","S/D % Agoda","S/D % Booking.Com","S/D % Expedia","S/D % Website"]})
+        fmt  = {c: "RM {:.2f}" for c in ["SALES","WALK IN","AGODA","B.COM","EXPEDIA","WEBSITE","TRIP.COM"]}
+        fmt.update({c: "{:.2f}%" for c in [
+            "S/D % Sales","S/D % Walk In","S/D % Agoda",
+            "S/D % Booking.Com","S/D % Expedia","S/D % Website",
+            "S/D % Trip.Com",
+        ]})
         st.dataframe(show.style.format(fmt), use_container_width=True, hide_index=True)
 
 st.markdown("---")
